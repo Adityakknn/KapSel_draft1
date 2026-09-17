@@ -1,0 +1,39 @@
+@import "tailwindcss";
+
+/*
+ * Design tokens E-Layan Desa Sabah Balau - editorial/institusional, terinspirasi Stanford.edu.
+ * Nilai di sini HARUS sinkron manual dengan packages/shared/src/design-tokens.ts (source of
+ * truth) - Tailwind v4 membaca theme dari CSS, bukan dari objek JS, jadi tidak bisa di-import
+ * langsung.
+ */
+:root {
+  --color-cardinal: #8c1515;
+  --color-cardinal-dark: #6e1010;
+  --color-ink: #2e2d29;
+  --color-ink-muted: #5b5a55;
+  --color-section: #f4f4f2;
+  --color-border: #e3e1dc;
+}
+
+@theme inline {
+  --color-cardinal: var(--color-cardinal);
+  --color-cardinal-dark: var(--color-cardinal-dark);
+  --color-ink: var(--color-ink);
+  --color-ink-muted: var(--color-ink-muted);
+  --color-section: var(--color-section);
+  --color-border: var(--color-border);
+
+  --font-serif: var(--font-source-serif);
+  --font-sans: var(--font-source-sans);
+}
+
+body {
+  font-family: var(--font-sans);
+}
+
+h1,
+h2,
+h3,
+h4 {
+  font-family: var(--font-serif);
+}

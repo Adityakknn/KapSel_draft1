@@ -1,0 +1,19 @@
+node_modules/
+dist/
+build/
+.next/
+.env
+.env.*
+!.env.example
+
+# Baileys auth session (contains WA login credentials - never commit)
+apps/wa-bot/auth/
+apps/wa-bot/session/
+
+# generated surat & logs
+/storage/
+*.log
+
+# OS
+.DS_Store
+Thumbs.db

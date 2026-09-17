@@ -1,0 +1,21 @@
+{
+  "name": "e-layan-desa",
+  "private": true,
+  "version": "0.1.0",
+  "description": "E-Layan Desa - Chatbot WhatsApp + Sistem Surat Otomatis (Desa Sabah Balau)",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "build:shared": "npm run build --workspace=packages/shared",
+    "predev:bot": "npm run build:shared",
+    "dev:bot": "npm run dev --workspace=apps/wa-bot",
+    "predev:api": "npm run build:shared",
+    "dev:api": "npm run dev --workspace=apps/api",
+    "db:migrate": "npm run prisma:migrate --workspace=packages/shared",
+    "db:studio": "npm run prisma:studio --workspace=packages/shared",
+    "db:seed": "npm run seed --workspace=packages/shared",
+    "create-admin": "npm run create-admin --workspace=apps/api --"
+  }
+}

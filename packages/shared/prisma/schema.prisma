@@ -1,0 +1,211 @@
+// Skema data terpadu E-Layan Desa Sabah Balau.
+// Dipakai bersama oleh wa-bot, api/dashboard admin, dan website publik.
+// Semua akses DB di seluruh project HARUS lewat Prisma Client yang di-generate dari skema ini
+// (jangan query manual/duplikat skema di tempat lain).
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============ AKUN ADMIN (Fase 3 - Dashboard) ============
+
+enum PerananAdmin {
+  SUPERADMIN
+  STAFF
+}
+
+model AdminUser {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String
+  nama         String
+  peran        PerananAdmin @default(STAFF)
+  aktif        Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  permohonanDiproses Permohonan[]  @relation("DiprosesOleh")
+  activityLogs       ActivityLog[]
+
+  @@map("admin_users")
+}
+
+// Nomor WA perangkat desa yang menerima notifikasi permohonan baru (Fase 1 & 3)
+model NotifikasiAdmin {
+  id        String   @id @default(cuid())
+  nomorWa   String   @unique
+  nama      String
+  aktif     Boolean  @default(true)
+  createdAt DateTime @default(now())
+
+  @@map("notifikasi_admin")
+}
+
+// ============ TEMPLATE SURAT (Fase 3 mengelola, Fase 1 & 2 memakai) ============
+
+enum TipeField {
+  TEXT
+  TEXTAREA
+  NUMBER
+  DATE
+  NIK
+  TELEPON
+  SELECT
+}
+
+model JenisSurat {
+  id           String   @id @default(cuid())
+  kode         String   @unique // slug pendek, contoh: "domisili"
+  nama         String   // nama tampilan, contoh: "Surat Keterangan Domisili"
+  deskripsi    String?
+  templateFile String   // path relatif file .docx template di storage
+  aktif        Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  fields      JenisSuratField[]
+  permohonan  Permohonan[]
+
+  @@map("jenis_surat")
+}
+
+model JenisSuratField {
+  id           String    @id @default(cuid())
+  jenisSuratId String
+  jenisSurat   JenisSurat @relation(fields: [jenisSuratId], references: [id], onDelete: Cascade)
+
+  key      String    // nama placeholder di template docx, contoh: "nama"
+  label    String    // label ditampilkan ke warga, contoh: "Nama Lengkap"
+  tipe     TipeField
+  wajib    Boolean   @default(true)
+  urutan   Int       @default(0)
+  opsi     String?   // untuk tipe SELECT: daftar opsi dipisah "|"
+
+  createdAt DateTime @default(now())
+
+  @@unique([jenisSuratId, key])
+  @@map("jenis_surat_field")
+}
+
+// ============ PERMOHONAN SURAT ============
+
+enum SumberKanal {
+  WHATSAPP
+  WEBSITE
+}
+
+enum StatusPermohonan {
+  MENUNGGU_VERIFIKASI
+  DISETUJUI
+  DITOLAK
+  SELESAI
+}
+
+model Permohonan {
+  id              String   @id @default(cuid())
+  nomorPermohonan String   @unique // contoh: SKD-20260917-0001
+
+  jenisSuratId String
+  jenisSurat   JenisSurat @relation(fields: [jenisSuratId], references: [id])
+
+  sumberKanal   SumberKanal
+  nomorWaPemohon String?    // wajib diisi kalau sumberKanal = WHATSAPP
+  dataPemohon   Json        // isian field dinamis sesuai JenisSuratField
+
+  status        StatusPermohonan @default(MENUNGGU_VERIFIKASI)
+  catatanAdmin  String?
+
+  fileDraftPath String?  // PDF hasil generate, dibuat saat pengajuan (draft, belum tentu final)
+  fileFinalPath String?  // PDF final setelah disetujui (dikirim ke warga)
+
+  diprosesOlehId String?
+  diprosesOleh   AdminUser? @relation("DiprosesOleh", fields: [diprosesOlehId], references: [id])
+  diprosesPadaAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  activityLogs ActivityLog[]
+
+  @@map("permohonan")
+}
+
+// ============ LOG AKTIVITAS (audit approve/reject dsb) ============
+
+model ActivityLog {
+  id        String   @id @default(cuid())
+  adminUserId String
+  adminUser   AdminUser @relation(fields: [adminUserId], references: [id])
+
+  aksi         String   // contoh: "APPROVE_PERMOHONAN", "REJECT_PERMOHONAN", "UPDATE_TEMPLATE"
+  permohonanId String?
+  permohonan   Permohonan? @relation(fields: [permohonanId], references: [id])
+  catatan      String?
+
+  createdAt DateTime @default(now())
+
+  @@map("activity_log")
+}
+
+// ============ SESI & LOG PERCAKAPAN CHATBOT (Fase 1) ============
+
+model ChatSession {
+  id            String   @id @default(cuid())
+  nomorWa       String   @unique
+  state         String   // step alur saat ini, contoh: "MENU_UTAMA", "AJUKAN_TUNGGU_NIK"
+  contextData   Json     @default("{}") // data yang sedang dikumpulkan step-by-step
+  lastActivityAt DateTime @default(now())
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  pesan ChatMessageLog[]
+
+  @@map("chat_session")
+}
+
+enum ArahPesan {
+  MASUK
+  KELUAR
+}
+
+model ChatMessageLog {
+  id        String   @id @default(cuid())
+  sessionId String
+  session   ChatSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  nomorWa   String
+  arah      ArahPesan
+  isiPesan  String
+  createdAt DateTime @default(now())
+
+  @@index([nomorWa])
+  @@map("chat_message_log")
+}
+
+// ============ PENGATURAN UMUM (Fase 3 - FAQ & konfigurasi chatbot) ============
+
+model FaqEntry {
+  id         String   @id @default(cuid())
+  pertanyaan String
+  jawaban    String
+  kategori   String?
+  urutan     Int      @default(0)
+  aktif      Boolean  @default(true)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@map("faq_entry")
+}
+
+model PengaturanUmum {
+  key       String   @id
+  value     String
+  updatedAt DateTime @updatedAt
+
+  @@map("pengaturan_umum")
+}
