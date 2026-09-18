@@ -96,3 +96,19 @@ export interface ActivityLogEntry {
   adminUser: { id: string; nama: string; email: string };
   permohonan: { id: string; nomorPermohonan: string } | null;
 }
+
+// ---------- Website Publik ----------
+
+export interface SubmitPermohonanResponse {
+  nomorPermohonan: string;
+  jenisSurat: string;
+  status: StatusPermohonan;
+}
+
+export interface PermohonanStatusPublik {
+  nomorPermohonan: string;
+  jenisSurat: string;
+  status: StatusPermohonan;
+  catatanAdmin: string | null;
+  diajukanPada: string;
+}
